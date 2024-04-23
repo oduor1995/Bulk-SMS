@@ -36,21 +36,13 @@ function CustomTable() {
   const [errorMessage, setErrorMessage] = useState();
   // Initialize formData state using useState hook
   const [formData, setFormData] = useState({
-    userProfile: {
-      Branch: '',
-      Department: '',
-      firstName: '',
-      lastName: '',
-      Email: '',
-      Password: '',
-      confirmPassword: '',
-    },
-    senderID: {
-      senderID: '',
-    },
-    userGroup: {
-      userGroup: '',
-    },
+    Branch: '',
+    Department: 'KE',
+    firstName: '',
+    lastName: '',
+    emailAddress: '',
+    senderIds: [4],
+    roleCode: '',
   });
 
   const [rows, setRows] = useState<any>([
@@ -115,14 +107,23 @@ function CustomTable() {
     return JSON.parse(jsonPayload);
   }
 
-  const addNewRow = async (formData: any, clientId: any) => {
+  const addNewRow = async (formData: any) => {
     setSelectedRowId(rows.id);
     const token = localStorage.getItem('accessToken');
     console.log(token);
     const decoded: any = jwtDecode(token);
     console.log('Decoded JWT:', decoded);
-    console.log('Selected row id:', clientId);
+    const account = decoded.account;
+    console.log('Account:', account);
     const authToken = localStorage.getItem('accessToken');
+    const decodeAccount = (account: any) => {
+      const decodedAccount = atob(account); // Decode base64 string
+      return decodedAccount; // Return decoded account string
+    };
+    const decodedAccount = decodeAccount(account);
+    console.log('Decoded Account:', decodedAccount);
+    const clientId = decodedAccount;
+    console.log('Client ID:', clientId);
     try {
       // Call the API to create a new user
       const response = await fetch(
@@ -133,7 +134,7 @@ function CustomTable() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ ...formData, clientId: id }),
+          body: JSON.stringify({ ...formData }),
         },
       );
 
@@ -176,7 +177,7 @@ function CustomTable() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${authToken}`, // Attach authorization token
           },
-          body: JSON.stringify({ ...formData, clientId: id }),
+          body: JSON.stringify({ ...formData }),
         },
       );
 
@@ -214,7 +215,6 @@ function CustomTable() {
         {showForm && (
           <RegistrationForm
             onSubmit={(formData) => addNewRow(formData, rows.id)}
-            id={selectedRowId}
           />
         )}
         {showEditUserForm && (

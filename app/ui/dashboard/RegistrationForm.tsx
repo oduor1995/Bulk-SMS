@@ -12,39 +12,29 @@ import Link from 'next/link';
 
 const aesutils = new Aesutils();
 
-interface UserProfile {
+interface FormData {
   Branch: string;
   Department: string;
   firstName: string;
   lastName: string;
-  Email: string;
-  Password: string;
-  confirmPassword: string;
-}
-
-interface SenderID {
-  senderID: string;
-}
-
-interface UserGroup {
-  userGroup: string;
-}
-
-interface FormData {
-  userProfile: UserProfile;
-  userGroup: UserGroup;
-  senderID: SenderID;
+  emailAddress: string;
+  senderIds: string[];
+  roleCode: string;
 }
 interface RegistrationFormProps {
-  onSubmit: (formData: any, id: any) => void; // Use a more specific type instead of 'any' if possible
-  id: any;
+  onSubmit: (formData: FormData) => Promise<void>;
 }
 
-const RegistrationForm: React.FC<RegistrationFormProps> = ({
-  onSubmit,
-  id,
-}) => {
-  const [activeTab, setActiveTab] = useState<number>(0);
+const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSubmit }) => {
+  const [formData, setFormData] = useState<FormData>({
+    Branch: '',
+    Department: 'KE',
+    firstName: '',
+    lastName: '',
+    emailAddress: '',
+    senderIds: [],
+    roleCode: '',
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -54,243 +44,108 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({
     { code: '003', name: 'Moi Avenue' },
   ];
 
-  const [formData, setFormData] = useState<FormData>({
-    userProfile: {
-      Branch: '',
-      Department: 'KE',
-      firstName: '',
-      lastName: '',
-      Email: '',
-      Password: '',
-      confirmPassword: '',
-    },
-    senderID: {
-      senderID: '',
-    },
-    userGroup: {
-      userGroup: '',
-    },
-  });
-
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-    category: keyof FormData,
-    field: string,
+    field: keyof FormData,
   ) => {
     const newFormData = { ...formData };
-    (newFormData[category] as any)[field] = e.target.value;
+    if (field === 'senderIds') {
+      // Ensure the value is always split into an array of strings
+      newFormData[field] = e.target.value.split(',').map((item) => item.trim());
+    } else {
+      newFormData[field] = e.target.value;
+    }
     setFormData(newFormData);
   };
 
-  const handleTabChange = (tabIndex: number) => {
-    setActiveTab(tabIndex);
-  };
-
   const handleSubmit = async (e: FormEvent) => {
+    console.log('i am clicked');
     e.preventDefault();
-    const { lastName, firstName, Email, Department, Branch } =
-      formData.userProfile;
-    const { userGroup } = formData.userGroup;
-    const { senderID } = formData.senderID;
-    const newForm = {
-      lastName,
-      firstName,
-      Email,
-      Department,
-      Branch,
-      userGroup,
-      senderID,
-    };
-    onSubmit(newForm, id);
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-    // if (
-    //   formData.userProfile.Password !== formData.userProfile.confirmPassword
-    // ) {
-    //   setErrorMessage("Passwords don't match");
-    //   return;
-    // }
+    onSubmit(formData);
 
-    // const secretKey = 'jWh60R71wb0HN2saj6mD3Rh8BQ4EUf';
-    // const encryptedPassword = await aesutils.encrypt(
-    //   formData.userProfile.Password,
-    //   secretKey,
-    // );
-
-    // const newForm = {
-    //   ...formData,
-    //   userProfile: {
-    //     ...formData.userProfile,
-    //     Password: encryptedPassword,
-    //   },
-    // };
-
-    // try {
-    //   const response = await fetch(
-    //     'https://api-finserve-dev.finserve.africa/user-manager/api/v1/client-signup',
-    //     {
-    //       method: 'POST',
-    //       headers: {
-    //         'Content-Type': 'application/json',
-    //       },
-    //       body: JSON.stringify(newForm),
-    //     },
-    //   );
-
-    //   if (response.ok) {
-    //     setSuccessMessage('Form submitted successfully');
-    //   } else {
-    //     const errorData = await response.json();
-    //     setErrorMessage(errorData.message);
-    //   }
-    // } catch (error) {
-    //   console.error('Error submitting form:', error);
-    //   setErrorMessage('An error occurred while submitting the form');
-    // }
+    try {
+      // Call your API here with form data
+      await onSubmit(formData);
+      setSuccessMessage('Form submitted successfully');
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setErrorMessage('An error occurred while submitting the form');
+    }
   };
 
   return (
-    <div className="mx-auto max-w-2xl rounded-lg border border-gray-300 p-3">
-      <h2>Add New user</h2>
-
-      <div className="mb-2 flex flex-col gap-4">
-        <button
-          className={`flex-1 p-2 ${activeTab === 0 ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => handleTabChange(0)}
-        >
-          User Profile
-        </button>
-        <button
-          className={`flex-1 p-2 ${activeTab === 1 ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => handleTabChange(1)}
-        >
-          sender ID
-        </button>
-        <button
-          className={`flex-1 p-2 ${activeTab === 2 ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => handleTabChange(2)}
-        >
-          User Group
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <div className="container mx-auto max-w-lg p-4">
+      <h2 className="mb-4 text-lg font-semibold">Add New User</h2>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {errorMessage && <div className="text-red-500">{errorMessage}</div>}
         {successMessage && (
           <div className="text-green-500">{successMessage}</div>
         )}
-        {activeTab === 0 && (
-          <div className="flex flex-wrap gap-4">
-            {/* First column */}
-            <div className="flex w-1/2 flex-col gap-4">
-              {/* First row */}
-              <div className="flex gap-4">
-                {/* Client Name */}
-                <input
-                  type="text"
-                  value={formData.userProfile.firstName}
-                  onChange={(e) =>
-                    handleInputChange(e, 'userProfile', 'firstName')
-                  }
-                  placeholder="firstName"
-                  className="flex-1 border border-gray-300 p-2"
-                  required
-                />
-                {/* last Name */}
-                <input
-                  type="text"
-                  value={formData.userProfile.lastName}
-                  onChange={(e) =>
-                    handleInputChange(e, 'userProfile', 'lastName')
-                  }
-                  placeholder="lastName"
-                  className="flex-1 border border-gray-300 p-2"
-                  required
-                />
-
-                {/* Branch Dropdown */}
-                <select
-                  value={formData.userProfile.Branch}
-                  onChange={(e) =>
-                    handleInputChange(e, 'userProfile', 'Branch')
-                  }
-                  className="flex-1 border border-gray-300 p-2"
-                >
-                  <option value="">Select Branch</option>
-                  {Branches.map((branch) => (
-                    <option key={branch.code} value={branch.code}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Second row */}
-              <div className="flex gap-4">
-                {/* Client Email */}
-                <input
-                  type="email"
-                  value={formData.userProfile.Email}
-                  onChange={(e) => handleInputChange(e, 'userProfile', 'Email')}
-                  placeholder="Email"
-                  className="flex-1 border border-gray-300 p-2"
-                />
-
-                {/* password */}
-                <input
-                  type="password"
-                  value={formData.userProfile.Password}
-                  onChange={(e) =>
-                    handleInputChange(e, 'userProfile', 'Password')
-                  }
-                  placeholder="Password"
-                  className="flex-1 border border-gray-300 p-2"
-                />
-                <input
-                  type="password"
-                  value={formData.userProfile.confirmPassword}
-                  onChange={(e) =>
-                    handleInputChange(e, 'userProfile', 'confirmPassword')
-                  }
-                  placeholder="Confirm Password"
-                  className="flex-1 border border-gray-300 p-2"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 1 && (
-          <div className="flex flex-col gap-4">
-            {/* sender Id */}
-            <select
-              value={formData.senderID.senderID}
-              onChange={(e) => handleInputChange(e, 'senderID', 'senderID')}
-              className="border border-gray-300 p-2"
-            >
-              <option value="">Select Sender ID</option>
-              <option>Equity Bank</option>
-              <option>Finserve</option>
-              <option>Equitel</option>
-            </select>
-          </div>
-        )}
-
-        {activeTab === 2 && (
-          <div className="flex flex-col gap-4">
-            {/* User Group */}
-            <select
-              value={formData.userGroup.userGroup}
-              onChange={(e) => handleInputChange(e, 'userGroup', 'userGroup')}
-              className="border border-gray-300 p-2"
-            >
-              <option value="">Select User Group</option>
-              <option>Super Admin</option>
-              <option>Admin</option>
-              <option>User</option>
-            </select>
-          </div>
-        )}
-        <button className="mx-auto max-w-sm rounded bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-700">
+        <div className="flex flex-col gap-2">
+          <input
+            type="text"
+            value={formData.firstName}
+            onChange={(e) => handleInputChange(e, 'firstName')}
+            placeholder="First Name"
+            className="rounded border border-gray-300 p-2"
+            required
+          />
+          <input
+            type="text"
+            value={formData.lastName}
+            onChange={(e) => handleInputChange(e, 'lastName')}
+            placeholder="Last Name"
+            className="rounded border border-gray-300 p-2"
+            required
+          />
+          <select
+            value={formData.Branch}
+            onChange={(e) => handleInputChange(e, 'Branch')}
+            className="rounded border border-gray-300 p-2"
+          >
+            <option value="">Select Branch</option>
+            {Branches.map((branch) => (
+              <option key={branch.name} value={branch.name}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="email"
+            value={formData.emailAddress}
+            onChange={(e) => handleInputChange(e, 'emailAddress')}
+            placeholder="Email"
+            className="rounded border border-gray-300 p-2"
+            required
+          />
+          <select
+            value={formData.senderIds}
+            onChange={(e) => handleInputChange(e, 'senderIds')}
+            className="rounded border border-gray-300 p-2"
+          >
+            <option value="">Select Sender ID</option>
+            <option>Equity Bank</option>
+            <option>Finserve</option>
+            <option>Equitel</option>
+          </select>
+          <select
+            value={formData.roleCode}
+            onChange={(e) => handleInputChange(e, 'roleCode')}
+            className="rounded border border-gray-300 p-2"
+          >
+            <option value="">Select User Group</option>
+            <option>Super Admin</option>
+            <option>Admin</option>
+            <option>User</option>
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="mt-4 rounded bg-red-500 p-2 text-white"
+        >
           Enroll
         </button>
       </form>

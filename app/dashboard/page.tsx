@@ -3,6 +3,8 @@ import { lusitana } from '@/app/ui/fonts';
 import React from 'react';
 import { ActionAreaCard } from '@/app/ui/dashboard/card';
 import { SimpleLineChart } from '@/app/ui/dashboard/charts';
+import { UserProfile } from '@/app/ui/dashboard/userProfile';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 export default async function Page() {
   return (
@@ -10,6 +12,10 @@ export default async function Page() {
       <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
         Dashboard
       </h1>
+      <div className="fixed right-8 top-0">
+        <AccountCircleIcon style={{ fontSize: 30, marginRight: 8 }} />
+        <UserProfile />
+      </div>
       <div>
         <div className="col-span-full mx-auto flex justify-between space-x-6">
           <div className="w-1/3">

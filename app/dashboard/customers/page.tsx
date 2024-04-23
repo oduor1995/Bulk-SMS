@@ -4,7 +4,6 @@ import { Modal } from '@/app/Shared/Modal';
 import { TableLayout } from '@/app/Shared/Tablelayout';
 import { Trash2 } from 'react-feather';
 import { useGroup } from '@/app/GroupContext';
-import SpeedDial from '@mui/material/SpeedDial';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -20,7 +19,7 @@ import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import MenuItem from '@mui/material/MenuItem';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { setFlagsFromString } from 'v8';
+import { GroupProfile } from '@/app/ui/dashboard/getGroup';
 
 export const Customer = () => {
   const [showAddGroupForm, setShowAddGroupForm] = useState(false);
@@ -37,6 +36,8 @@ export const Customer = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [showActions, setShowActions] = useState(null);
+  const [loading, setLoading] = useState(true); // State to track loading status
+  const [error, setError] = useState(null); // State to hold any errors
 
   // const handleAddGroup = () => {
   //   const newGroup = {
@@ -56,9 +57,42 @@ export const Customer = () => {
   //   setShowAddGroupForm(false);
   // };
   useEffect(() => {
-    // Access selectedGroup here or perform any other logic based on its changes
-    console.log('Selected Group:', selectedGroup);
-  }, [selectedGroup]);
+    // Fetch data from the database when the component mounts
+    fetchData();
+  }, []); // Empty dependency array ensures this effect runs only once, on mount
+
+  const fetchData = async () => {
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const response = await fetch(
+        'https://api-finserve-dev.finserve.africa/core/api/v1/get/sms-campaign-group',
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      const Data = await response.json();
+      const formattedData = Data.data.content.map((item) => ({
+        id: item.id,
+        groupName: item.name, // Assuming 'name' is the field you want to display in the groupName column
+        totalCustomers: item.createdBy,
+        createdDate: item.createdAt,
+      }));
+      console.log('This is the data', formattedData);
+
+      setRows(formattedData); // Set the fetched data to the state
+      setLoading(false); // Set loading to false after data is fetched
+    } catch (error) {
+      setError(error); // Set error state if fetch fails
+      setLoading(false); // Set loading to false after fetch fails
+    }
+  };
 
   const handleFileUpload = () => {
     const fileInput = document.getElementById('fileInput');
@@ -103,7 +137,36 @@ export const Customer = () => {
     console.log('Edit row with ID:', id);
 
     const authToken = localStorage.getItem('token');
-    console.log(authToken);
+    const editGroup = async (id: number, editedGroupName: string) => {
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        const response = await fetch(
+          `https://api-finserve-dev.finserve.africa/core/api/v1/edit/sms-campaign-group/${id}`,
+          {
+            method: 'PUT', // Assuming your API uses PUT for updating data
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ name: editedGroupName }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to edit the group');
+        }
+
+        // Optionally, handle success response
+        console.log('Group edited successfully');
+
+        // You might want to update the UI with the edited group name
+        // Fetch data again to get the updated group list
+        fetchData();
+      } catch (error) {
+        console.error('Error editing group:', error);
+        // Optionally, handle error
+      }
+    };
   };
 
   const handleImportCustomers = () => {
@@ -132,23 +195,54 @@ export const Customer = () => {
     setShowEditGroupForm(true);
   };
 
-  const handleAddGroup = () => {
+  const handleAddGroup = async () => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      console.error('Access token not found in local storage');
+      return; // Handle the absence of token as per your application's logic
+    }
+
     const newGroup = {
-      id: rows.length + 1, // Add a unique id for each new row
-      groupName: newGroupName,
+      id: rows.length + 1, // Assuming 'rows' is your state that tracks groups
+      groupName: newGroupName, // Assuming 'newGroupName' is the new group's name input from state
       totalCustomers: 0,
       createdDate: new Date().toLocaleDateString(),
     };
 
-    setRows([...rows, newGroup]);
-    setNewGroupName('');
+    try {
+      const response = await fetch(
+        'https://api-finserve-dev.finserve.africa/core/api/v1/create/sms-campaign-group',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ name: newGroupName }),
+        },
+      );
 
-    // Update the list of available groups in the context
-    addGroup(newGroupName);
+      if (!response.ok) {
+        throw new Error('Failed to create the group');
+      }
 
-    // Use the selectGroup function to update the selected group in the context
-    selectGroup(newGroupName);
-    setShowAddGroupForm(false);
+      // Optionally, you can use the API response data if it includes the newly created group details
+      const result = await response.json();
+
+      // Update local state with the new group
+      setRows([...rows, newGroup]);
+      setNewGroupName('');
+
+      // Update the list of available groups in the context
+      addGroup(newGroupName);
+
+      // Use the selectGroup function to update the selected group in the context
+      selectGroup(newGroupName);
+      setShowAddGroupForm(false);
+    } catch (error) {
+      console.error('Error adding group:', error);
+      // Optionally handle the error in UI, such as showing an error message
+    }
   };
 
   const handleChangePage = (event, newPage) => {
@@ -358,6 +452,7 @@ export const Customer = () => {
         />
       </div>
       <div>
+        <div></div>
         <div>
           <Button
             variant="contained"
@@ -367,6 +462,7 @@ export const Customer = () => {
           >
             Add Group
           </Button>
+          {/* <GroupProfile /> */}
           <TableContainer component={Paper}>
             <Table aria-label="dynamic table">
               <TableHead>
@@ -384,7 +480,7 @@ export const Customer = () => {
                     />
                   </TableCell>
                   <TableCell>Group Name</TableCell>
-                  <TableCell>Total Customers</TableCell>
+                  <TableCell>Creator</TableCell>
                   <TableCell>Created Date</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>

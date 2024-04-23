@@ -5,13 +5,21 @@ import AcmeLogo from '@/app/ui/acme-logo';
 import { PowerIcon } from '@heroicons/react/24/outline';
 
 export default function SideNav() {
-  const handleLogout = async () => {
+  const handleLogout = async (event: any) => {
+    event.preventDefault();
+
     try {
-      // Make API call to logout endpoint
+      const username = 'otienocollinsoduor@gmail.com';
+
       const response = await fetch(
         'https://api-finserve-dev.finserve.africa/user-manager/api/v1/user/logout',
         {
           method: 'POST',
+          // credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username }),
         },
       );
 
@@ -19,8 +27,7 @@ export default function SideNav() {
         throw new Error('Logout failed');
       }
 
-      // If logout is successful, you can redirect the user or perform any other action
-      window.location.href = '/OTP';
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
       // Handle error, show error message, etc.
@@ -46,10 +53,13 @@ export default function SideNav() {
       <div className="flex grow flex-row justify-between space-x-2 md:flex-col md:space-x-0 md:space-y-2">
         <NavLinks />
         <div className="hidden h-auto w-full grow rounded-md bg-gray-50 md:block"></div>
-        <form>
+        <form onSubmit={handleLogout}>
+          {' '}
+          {/* Use onSubmit event */}
           <button
-            onClick={handleLogout}
+            type="submit" // Explicitly set button type to submit
             className="flex h-[48px] w-full grow items-center justify-center gap-2 rounded-md bg-gray-50 p-3 text-sm font-medium hover:bg-sky-100 hover:text-blue-600 md:flex-none md:justify-start md:p-2 md:px-3"
+            aria-label="Sign Out"
           >
             <PowerIcon className="w-6" />
             <div className="hidden md:block">Sign Out</div>

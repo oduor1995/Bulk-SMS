@@ -65,6 +65,7 @@ export default function OTPForm() {
       setErrorMessage('An unexpected error occurred. Please try again later.');
     }
   };
+  function regenerateOTP() {}
 
   return (
     <div className="mx-auto mt-8 max-w-[400px] rounded-md bg-white p-6 shadow-md">
@@ -78,15 +79,15 @@ export default function OTPForm() {
           className="mb-4 block w-full rounded-md border-gray-300 px-4 py-2 focus:outline-none focus:ring focus:ring-blue-400"
           required
         />
-        <button
-          type="submit"
-          className="rounded-md bg-blue-500 px-4 py-2 font-semibold text-white hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-400"
-        >
-          Submit OTP
-        </button>
-        <button className="bg-red-500" mr-2>
-          Regenerate OTP
-        </button>
+        <div className="">
+          <button
+            type="submit"
+            className="rounded-md bg-red-500 px-4 py-2 font-semibold text-white hover:bg-red-700 focus:outline-none focus:ring focus:ring-blue-400"
+          >
+            Submit OTP
+          </button>
+        </div>
+
         {errorMessage && <p className="mt-2 text-red-500">{errorMessage}</p>}
       </form>
     </div>
