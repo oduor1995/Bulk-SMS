@@ -1,0 +1,102 @@
+trigger:
+  - develop
+  - release
+  - main
+
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: "acrfinservedevtest"
+  
+  DEVImageRepository: "bulksms/client-portal-dev"
+
+  containerRegistry: "acrfinservedevtest.azurecr.io"
+
+  dockerfilePath: "**/Dockerfile"
+
+  azureSubscription: "Enterprise Core"
+
+  devKeyVaultName: "kv-dev-finserve"
+
+  vmImageName: 'default'
+  appName: 'bulksms-client-portal'
+  tag: "$(Build.BuildId)"
+
+  useKeyVault: false
+
+stages:
+  - stage: PRBuild
+    condition: and(always(), eq(variables['Build.Reason'], 'PullRequest'))
+    displayName: Validate PR
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          name: $(vmImageName)
+        steps:
+
+          - task: AzureKeyVault@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              KeyVaultName: $(devKeyVaultName)
+              SecretsFilter: "*"
+              RunAsPreJob: false
+            condition: and(succeededOrFailed(),eq(variables.securityScan, true))
+
+          - task: replacetokens@3
+            inputs:
+              targetFiles: |
+                  **/Dockerfile
+              encoding: "auto"
+              writeBOM: true
+              actionOnMissing: "warn"
+              keepToken: false
+              tokenPrefix: "#{"
+              tokenSuffix: "}#"
+            condition: and(succeededOrFailed(),eq(variables.securityScan, true))
+
+          - task: Docker@2
+            displayName: Build image
+            inputs:
+                containerRegistry: $(dockerRegistryServiceConnection)
+                repository: $(DEVImageRepository)
+                command: "build"
+                Dockerfile: $(dockerfilePath)
+
+  - stage: BuildDEV
+    displayName: DEV
+    condition: and(always(), contains(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+            name: $(vmImageName)
+        steps:
+          - task: AzureKeyVault@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              KeyVaultName: $(devKeyVaultName)
+              SecretsFilter: "*"
+              RunAsPreJob: false
+            condition: and(succeededOrFailed(),eq(variables.securityScan, true))
+
+          - task: replacetokens@3
+            inputs:
+              targetFiles: |
+                  **/Dockerfile
+              encoding: "auto"
+              writeBOM: true
+              actionOnMissing: "warn"
+              keepToken: false
+              tokenPrefix: "#{"
+              tokenSuffix: "}#"
+            condition: and(succeededOrFailed(),eq(variables.securityScan, true))
+
+          - task: Docker@2
+            displayName: Build and push an image to container registry
+            inputs:
+              command: buildAndPush
+              repository: $(DEVImageRepository)
+              dockerfile: $(dockerfilePath)
+              containerRegistry: $(dockerRegistryServiceConnection)
+              tags: |
+                  $(tag)
