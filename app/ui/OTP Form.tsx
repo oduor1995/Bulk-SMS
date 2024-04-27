@@ -1,4 +1,5 @@
 'use client';
+import { environment } from '@/environment/environment';
 import { useState } from 'react';
 
 export default function OTPForm() {
@@ -12,6 +13,7 @@ export default function OTPForm() {
       setErrorMessage('Please enter a valid 6-digit OTP.');
       return;
     }
+    const dev_url = environment.dev_url;
 
     try {
       // Retrieve token from local storage
@@ -30,17 +32,14 @@ export default function OTPForm() {
       });
 
       // Send OTP and token to API for verification
-      const response = await fetch(
-        'https://api-finserve-dev.finserve.africa/user-manager/api/v1/client-user/verifyOTP',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Token: `${token}`, // Include token in request headers
-          },
-          body: JSON.stringify({ verificationCode: otp }), // Include only OTP in request body
+      const response = await fetch(`${dev_url}/api/v1/client-user/verifyOTP`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Token: `${token}`, // Include token in request headers
         },
-      );
+        body: JSON.stringify({ verificationCode: otp }), // Include only OTP in request body
+      });
 
       // Check if the request was successful
       if (response.ok) {

@@ -20,6 +20,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import MenuItem from '@mui/material/MenuItem';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { GroupProfile } from '@/app/ui/dashboard/getGroup';
+import { environment } from '@/environment/environment';
 
 export const Customer = () => {
   const [showAddGroupForm, setShowAddGroupForm] = useState(false);
@@ -27,7 +28,9 @@ export const Customer = () => {
   const [showImportCustomersForm, setShowImportCustomersForm] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [data, setData] = useState([]);
-  const { selectedGroup, selectGroup, availableGroups, addGroup } = useGroup();
+  // const { selectedGroup, selectGroup, availableGroups, addGroup } = useGroup();
+  const [availableGroups, setAvailableGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const handleGroupNameChange = (e) => {
     setNewGroupName(e.target.value);
   };
@@ -38,6 +41,7 @@ export const Customer = () => {
   const [showActions, setShowActions] = useState(null);
   const [loading, setLoading] = useState(true); // State to track loading status
   const [error, setError] = useState(null); // State to hold any errors
+  const [uploadResponse, setUploadResponse] = useState(null);
 
   // const handleAddGroup = () => {
   //   const newGroup = {
@@ -56,6 +60,7 @@ export const Customer = () => {
   //   selectGroup(newGroupName);
   //   setShowAddGroupForm(false);
   // };
+
   useEffect(() => {
     // Fetch data from the database when the component mounts
     fetchData();
@@ -78,57 +83,87 @@ export const Customer = () => {
         throw new Error('Failed to fetch data');
       }
       const Data = await response.json();
-      const formattedData = Data.data.content.map((item) => ({
+      const formattedData = Data.data.content.map((item: any) => ({
         id: item.id,
-        groupName: item.name, // Assuming 'name' is the field you want to display in the groupName column
+        groupName: item.name,
         totalCustomers: item.createdBy,
-        createdDate: item.createdAt,
+        createdDate: new Date(item.createdAt).toLocaleString('en-US', {
+          // Format according to your preference
+          year: 'numeric',
+          month: 'numeric',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+        }),
       }));
       console.log('This is the data', formattedData);
 
-      setRows(formattedData); // Set the fetched data to the state
-      setLoading(false); // Set loading to false after data is fetched
+      const availableGroupsData = Data.data.content.map((group: any) => ({
+        id: group.id,
+        name: group.name,
+      }));
+      console.log('Available Groups:', availableGroupsData);
+
+      setAvailableGroups(availableGroupsData);
+      console.log('These are the available groups:', availableGroupsData);
+
+      setRows(formattedData);
+      setLoading(false);
     } catch (error) {
-      setError(error); // Set error state if fetch fails
-      setLoading(false); // Set loading to false after fetch fails
+      setError(error);
+      setLoading(false);
     }
   };
 
-  const handleFileUpload = () => {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput?.files?.[0];
+  const dev_core_url = environment.dev_core_url;
 
-    if (file) {
-      // Assuming 'group_name' is the correct field name
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('group_name', selectedGroup);
+  const handleFileUpload = async () => {
+    const fileInput = document.getElementById(
+      'fileInput',
+    ) as HTMLInputElement | null;
 
-      // Upload the file and group name directly to the Express server
-      fetch('http://localhost:3000/dashboard/api', {
-        method: 'POST',
-        body: formData,
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then((data) => {
-          console.log('File uploaded successfully:', data);
-
-          // Additional logic if needed
-        })
-        .catch((error) => {
-          console.error('Error uploading file:', error);
-
-          // Handle errors if needed
-        });
+    if (!fileInput) {
+      console.error('File input element not found.');
+      return;
     }
 
-    // Close the modal after handling the file upload
-    setShowImportCustomersForm(false);
+    const file = fileInput.files?.[0];
+
+    if (!file) {
+      console.error('No file selected.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('groupId', selectedGroup.id);
+
+    const accessToken = localStorage.getItem('accessToken');
+
+    try {
+      const response = await fetch(
+        `${dev_core_url}/api/v1/upload/sms-recipients-file`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setUploadResponse(data.message);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    } finally {
+      // Close the modal after handling the file upload
+      setShowImportCustomersForm(false);
+    }
   };
   const handleEdit = (id: number) => {
     // setEditRowId(id);
@@ -137,36 +172,39 @@ export const Customer = () => {
     console.log('Edit row with ID:', id);
 
     const authToken = localStorage.getItem('token');
-    const editGroup = async (id: number, editedGroupName: string) => {
-      try {
-        const accessToken = localStorage.getItem('accessToken');
-        const response = await fetch(
-          `https://api-finserve-dev.finserve.africa/core/api/v1/edit/sms-campaign-group/${id}`,
-          {
-            method: 'PUT', // Assuming your API uses PUT for updating data
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ name: editedGroupName }),
+  };
+  const editGroup = async (id: number) => {
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const response = await fetch(
+        `${dev_core_url}/api/v1/edit/sms-campaign-group/${id}`,
+        {
+          method: 'PUT', // Assuming your API uses PUT for updating data
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
           },
-        );
+          body: JSON.stringify({ name }),
+        },
+      );
 
-        if (!response.ok) {
-          throw new Error('Failed to edit the group');
-        }
-
-        // Optionally, handle success response
-        console.log('Group edited successfully');
-
-        // You might want to update the UI with the edited group name
-        // Fetch data again to get the updated group list
-        fetchData();
-      } catch (error) {
-        console.error('Error editing group:', error);
-        // Optionally, handle error
+      if (!response.ok) {
+        throw new Error('Failed to edit the group');
       }
-    };
+
+      // Optionally, handle success response
+      console.log('Group edited successfully');
+
+      // You might want to update the UI with the edited group name
+      // Fetch data again to get the updated group list
+      fetchData();
+    } catch (error) {
+      console.error('Error editing group:', error);
+      // Optionally, handle error
+    }
+  };
+  const test = () => {
+    console.timeLog('am fine');
   };
 
   const handleImportCustomers = () => {
@@ -211,7 +249,7 @@ export const Customer = () => {
 
     try {
       const response = await fetch(
-        'https://api-finserve-dev.finserve.africa/core/api/v1/create/sms-campaign-group',
+        'http://localhost:8082/api/v1/create/sms-campaign-group',
         {
           method: 'POST',
           headers: {
@@ -342,8 +380,18 @@ export const Customer = () => {
           <div style={{ padding: '16px' }}>
             <label>Select Group:</label>
             <select
-              value={selectedGroup || ''}
-              onChange={(e) => selectGroup(e.target.value)}
+              value={selectedGroup ? selectedGroup.id : ''} // Use selectedGroup.id as the value
+              onChange={(e) => {
+                const selectedGroupId = e.target.value;
+                // Find the selected group from availableGroups using its ID
+                const selectedGroup = availableGroups.find((group) => {
+                  return group.id.toString() === selectedGroupId;
+                });
+                console.log('selected group', selectedGroup);
+
+                // Update selectedGroup state with the selected group
+                setSelectedGroup(selectedGroup);
+              }}
               style={{
                 borderWidth: '1px',
                 borderColor: '#3498db',
@@ -356,9 +404,9 @@ export const Customer = () => {
               <option value="" disabled>
                 Choose a group...
               </option>
-              {availableGroups.map((group) => (
-                <option key={group} value={group}>
-                  {group}
+              {availableGroups.map((group: any) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
                 </option>
               ))}
             </select>
@@ -411,7 +459,7 @@ export const Customer = () => {
               />
               <button
                 className="mt-10 cursor-pointer rounded bg-red-500 px-4 py-2 font-bold text-white outline-none hover:bg-red-700"
-                onClick={handleAddGroup}
+                onClick={test}
               >
                 Edit group
               </button>
@@ -462,6 +510,14 @@ export const Customer = () => {
           >
             Add Group
           </Button>
+          {uploadResponse && (
+            <div className="mt-4 rounded-lg border border-gray-300 bg-gray-100 p-4">
+              <h3 className="mb-2 text-lg text-blue-500">Upload Response:</h3>
+              <pre className="overflow-auto rounded-lg border border-gray-200 bg-white p-3">
+                {JSON.stringify(uploadResponse, null, 2)}
+              </pre>
+            </div>
+          )}
           {/* <GroupProfile /> */}
           <TableContainer component={Paper}>
             <Table aria-label="dynamic table">

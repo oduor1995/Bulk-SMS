@@ -30,7 +30,7 @@ function EditGroupModal() {
           />
           <button
             className="mt-10 cursor-pointer rounded bg-red-500 px-4 py-2 font-bold text-white outline-none hover:bg-red-700"
-            onClick={handleAddGroup}
+            onClick={}
           >
             Edit group
           </button>

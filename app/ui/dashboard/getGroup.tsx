@@ -1,3 +1,4 @@
+import { environment } from '@/environment/environment';
 import { useState, useEffect } from 'react';
 
 export function GroupProfile() {
@@ -8,6 +9,7 @@ export function GroupProfile() {
   useEffect(() => {
     fetchGroupDetails();
   }, []);
+  const dev_core_url = environment.dev_core_url;
 
   const fetchGroupDetails = async () => {
     try {
@@ -16,7 +18,7 @@ export function GroupProfile() {
         throw new Error('Access token not found');
       }
       const response = await fetch(
-        'https://api-finserve-dev.finserve.africa/core/api/v1/get/sms-campaign-group',
+        `${dev_core_url}/api/v1/get/sms-campaign-group`,
         {
           method: 'GET',
           headers: {

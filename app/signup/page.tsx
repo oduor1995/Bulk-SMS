@@ -10,6 +10,7 @@ import {
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { environment } from '@/environment/environment';
 
 const aestutils = new Aesutils();
 
@@ -135,6 +136,7 @@ const Form = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const dev_url = environment.dev_url;
 
     // Encrypt the form data
     const secretKey = 'jWh60R71wb0HN2saj6mD3Rh8BQ4EUf';
@@ -163,16 +165,13 @@ const Form = () => {
     console.log(encryptedPassword);
 
     try {
-      const response = await fetch(
-        'https://api-finserve-dev.finserve.africa/user-manager/api/v1/client-signup',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(newForm),
+      const response = await fetch(`${dev_url}/api/v1/client-signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify(newForm),
+      });
 
       if (response.ok) {
         setSuccessMessage('Form submitted successfully');

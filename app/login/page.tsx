@@ -13,10 +13,12 @@ import { Button } from '@/app/ui/button';
 import { useFormState, useFormStatus } from 'react-dom';
 import { authenticate } from '@/app/lib/actions';
 import Link from 'next/link';
+import { environment } from '@/environment/environment';
 
 const aestutils = new Aesutils();
 export default function LoginForm() {
-  const [errorMessage, setErrorMessage] = useState(null); // State for error message
+  const [errorMessage, setErrorMessage] = useState(null); //
+  const dev_url = environment.dev_url;
 
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent default form submission behavior
@@ -40,7 +42,7 @@ export default function LoginForm() {
 
       // Call the API to authenticate the user
       const response = await fetch(
-        'https://api-finserve-dev.finserve.africa/user-manager/api/v1/authenticate-client-user',
+        `${dev_url}/api/v1/authenticate-client-user`,
         {
           method: 'POST',
           headers: {
