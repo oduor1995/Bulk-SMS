@@ -1,9 +1,9 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Modal } from '@/app/Shared/Modal';
 import { TableLayout } from '@/app/Shared/Tablelayout';
 import { Trash2 } from 'react-feather';
-import { useGroup } from '@/app/GroupContext';
+import { useGroup, GroupProvider } from '@/app/GroupContext';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -18,11 +18,20 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import MenuItem from '@mui/material/MenuItem';
+import Menu from '@mui/material/Menu';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { GroupProfile } from '@/app/ui/dashboard/getGroup';
 import { environment } from '@/environment/environment';
-
+import Snackbar from '@mui/material/Snackbar';
+import CloseIcon from '@mui/icons-material/Close';
+import { SimpleSnackbar } from '@/app/ui/dashboard/snackBar';
+import { CheckCircle, Cancel } from '@mui/icons-material'; // Import icons for activation status
+import { TableComponent } from '@/app/ui/dashboard/Recipient';
+import { useRowId } from '@/app/rowIdContext';
+import { RowIdProvider } from '@/app/rowIdContext';
+import { useRouter } from 'next/navigation';
 export const Customer = () => {
+  // const authToken = localStorage.getItem('accessToken');
   const [showAddGroupForm, setShowAddGroupForm] = useState(false);
   const [showEditGroupForm, setShowEditGroupForm] = useState(false);
   const [showImportCustomersForm, setShowImportCustomersForm] = useState(false);
@@ -31,17 +40,32 @@ export const Customer = () => {
   // const { selectedGroup, selectGroup, availableGroups, addGroup } = useGroup();
   const [availableGroups, setAvailableGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   const handleGroupNameChange = (e) => {
     setNewGroupName(e.target.value);
   };
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [recipients, setRecipients] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [showActions, setShowActions] = useState(null);
   const [loading, setLoading] = useState(true); // State to track loading status
   const [error, setError] = useState(null); // State to hold any errors
   const [uploadResponse, setUploadResponse] = useState(null);
+  const [activationSuccess, setActivationSuccess] = useState(false);
+  const { selectedRowId, setSelectedRow } = useRowId();
+  const [groupsData, setGroupsData] = useState(null);
+  const [fileInfo, setFileInfo] = useState(null);
+  const [showMenu, setShowMenu] = useState(null); // State to control the visibility of the menu
+  const local_user = environment.local_user;
+  const dev_core = environment.dev_core_url;
+  const dev_url = environment.dev_url;
+  const local_core = environment.local_core;
+
+  const router = useRouter();
 
   // const handleAddGroup = () => {
   //   const newGroup = {
@@ -60,17 +84,20 @@ export const Customer = () => {
   //   selectGroup(newGroupName);
   //   setShowAddGroupForm(false);
   // };
+  const closeMenu = () => {
+    setShowMenu(null);
+  };
 
   useEffect(() => {
     // Fetch data from the database when the component mounts
     fetchData();
-  }, []); // Empty dependency array ensures this effect runs only once, on mount
+  }, []);
 
   const fetchData = async () => {
     try {
       const accessToken = localStorage.getItem('accessToken');
       const response = await fetch(
-        'https://api-finserve-dev.finserve.africa/core/api/v1/get/sms-campaign-group',
+        `${local_core}/api/v1/get/sms-campaign-group`,
         {
           method: 'GET',
           headers: {
@@ -83,12 +110,12 @@ export const Customer = () => {
         throw new Error('Failed to fetch data');
       }
       const Data = await response.json();
+      setGroupsData(Data.data.content);
       const formattedData = Data.data.content.map((item: any) => ({
         id: item.id,
         groupName: item.name,
-        totalCustomers: item.createdBy,
+        activationStatus: item.status.name,
         createdDate: new Date(item.createdAt).toLocaleString('en-US', {
-          // Format according to your preference
           year: 'numeric',
           month: 'numeric',
           day: 'numeric',
@@ -114,6 +141,29 @@ export const Customer = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Fetch recipients data from the API endpoint
+    const fetchRecipients = async (rowId: number) => {
+      try {
+        const response = await fetch(
+          '{{local_url}}/api/v1/sms-campaign-group/recipients?groupId=1&page=0&size=10',
+        );
+        const data = await response.json();
+        if (data.status) {
+          setRecipients(data.data.content);
+        } else {
+          console.error('Error fetching recipients:', data.message);
+        }
+      } catch (error) {
+        console.error('Error fetching recipients:', error);
+      }
+    };
+
+    fetchRecipients();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array to run effect only once on mount
 
   const dev_core_url = environment.dev_core_url;
 
@@ -142,7 +192,7 @@ export const Customer = () => {
 
     try {
       const response = await fetch(
-        `${dev_core_url}/api/v1/upload/sms-recipients-file`,
+        `${local_core}/api/v1/upload/sms-recipients-file`,
         {
           method: 'POST',
           headers: {
@@ -156,8 +206,11 @@ export const Customer = () => {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
+      fetchData();
       const data = await response.json();
       setUploadResponse(data.message);
+      setOpenSnackbar(true);
+      setSnackbarMessage('File uploaded Successfully');
     } catch (error) {
       console.error('Error uploading file:', error);
     } finally {
@@ -165,26 +218,89 @@ export const Customer = () => {
       setShowImportCustomersForm(false);
     }
   };
-  const handleEdit = (id: number) => {
-    // setEditRowId(id);
+  const handleEdit = (id: any) => {
+    // Find the group object with the given id
+    const groupToEdit = rows.find((group) => group.id === id);
+
+    // Set the new group name based on the group to edit
+    setNewGroupName(groupToEdit.groupName);
+
+    // Set the selected group to the group being edited
+    setSelectedGroup(groupToEdit);
+
+    // Open the edit group modal
     setShowEditGroupForm(true);
-
-    console.log('Edit row with ID:', id);
-
-    const authToken = localStorage.getItem('token');
+    setAnchorEl(null);
+    // setShowActions(null);
   };
-  const editGroup = async (id: number) => {
+  const groupDeactivate = async (groupId: any) => {
+    const authToken = localStorage.getItem('accessToken');
+    console.log('This is the  selectedRowId  ', selectedRowId);
+    try {
+      const response = await fetch(
+        `${local_core}/api/v1/deactivate/sms-campaign-group/${groupId}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        setAnchorEl(null);
+        setShowActions(null);
+        setSnackbarMessage('Group deactivated successfully');
+        setOpenSnackbar(true);
+      } else {
+        console.error('Failed to activate group:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error activating group:', error);
+    }
+    fetchData();
+  };
+  const groupActivate = async (groupId: any) => {
+    try {
+      const response = await fetch(
+        `${local_core}/api/v1/activate/sms-campaign-group/${groupId}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        setAnchorEl(null);
+        setShowActions(null);
+        setSnackbarMessage('Group activated successfully');
+        setOpenSnackbar(true);
+      } else {
+        console.error('Failed to activate group:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error activating group:', error);
+    }
+    fetchData();
+  };
+  const editGroup = async () => {
     try {
       const accessToken = localStorage.getItem('accessToken');
+      console.log('This is the selected group', selectedGroup);
       const response = await fetch(
-        `${dev_core_url}/api/v1/edit/sms-campaign-group/${id}`,
+        `${local_core}/api/v1/edit/sms-campaign-group`,
         {
-          method: 'PUT', // Assuming your API uses PUT for updating data
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({
+            id: selectedGroup.id,
+            name: newGroupName,
+          }),
         },
       );
 
@@ -195,16 +311,18 @@ export const Customer = () => {
       // Optionally, handle success response
       console.log('Group edited successfully');
 
-      // You might want to update the UI with the edited group name
       // Fetch data again to get the updated group list
       fetchData();
+      setAnchorEl(null);
+      setShowActions(null);
+      setShowEditGroupForm(false);
+      setSnackbarMessage('Group edited successfully');
+      setOpenSnackbar(true);
     } catch (error) {
       console.error('Error editing group:', error);
-      // Optionally, handle error
+      setSnackbarMessage('Error editing group. Please try again.');
+      setOpenSnackbar(true);
     }
-  };
-  const test = () => {
-    console.timeLog('am fine');
   };
 
   const handleImportCustomers = () => {
@@ -229,8 +347,30 @@ export const Customer = () => {
   const addRow = () => {
     setShowAddGroupForm(true);
   };
-  const editgroup = () => {
-    setShowEditGroupForm(true);
+
+  const handleGetFileInfo = (rowId: number) => {
+    const group = groupsData?.find((group: any) => group.id === rowId);
+
+    if (group && group.fileInfo) {
+      console.log('File Info:', group.fileInfo);
+      setFileInfo(group.fileInfo);
+      setAnchorEl(null);
+      setShowActions(null);
+    } else {
+      console.error('No file information available for this group.');
+      setFileInfo(false);
+      setAnchorEl(null);
+    }
+  };
+
+  const getFileInfo = (row: any) => {
+    setSelectedRow(row.id);
+    router.push('/dashboard/RecipientTable');
+  };
+
+  const getSkippedRecords = (row: any) => {
+    setSelectedRow(row.id);
+    router.push('/dashboard/skippedRecords');
   };
 
   const handleAddGroup = async () => {
@@ -246,10 +386,11 @@ export const Customer = () => {
       totalCustomers: 0,
       createdDate: new Date().toLocaleDateString(),
     };
+    const dev_core_url = environment.dev_core_url;
 
     try {
       const response = await fetch(
-        'http://localhost:8082/api/v1/create/sms-campaign-group',
+        `${local_core}/api/v1/create/sms-campaign-group`,
         {
           method: 'POST',
           headers: {
@@ -264,19 +405,13 @@ export const Customer = () => {
         throw new Error('Failed to create the group');
       }
 
-      // Optionally, you can use the API response data if it includes the newly created group details
-      const result = await response.json();
-
       // Update local state with the new group
+      fetchData();
       setRows([...rows, newGroup]);
       setNewGroupName('');
-
-      // Update the list of available groups in the context
-      addGroup(newGroupName);
-
-      // Use the selectGroup function to update the selected group in the context
-      selectGroup(newGroupName);
       setShowAddGroupForm(false);
+      setSnackbarMessage('Group Created successfully');
+      setOpenSnackbar(true);
     } catch (error) {
       console.error('Error adding group:', error);
       // Optionally handle the error in UI, such as showing an error message
@@ -322,13 +457,53 @@ export const Customer = () => {
   };
 
   const isSelected = (id) => selected.indexOf(id) !== -1;
-  const deleteRow = (id) => {
-    setRows(rows.filter((row) => row.id !== id));
+  const deleteRow = async (id) => {
+    const accessToken = localStorage.getItem('accessToken');
+    const url = `${dev_core_url}/api/v1/delete/sms-campaign-group/${id}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to delete the row with ID ${id}: ${response.status}`,
+        );
+      }
+
+      // If the delete was successful, filter out the row from the UI
+      setRows((rows) => rows.filter((row) => row.id !== id));
+      console.log(`Row with ID ${id} was deleted successfully.`);
+    } catch (error) {
+      console.error('Error deleting row:', error);
+      // Optionally, show a user-friendly error message on the UI
+    }
   };
   const handleEditClick = (id) => {
     // Logic for handling edit action
     console.log('Edit clicked for id:', id);
   };
+
+  const [snackPack, setSnackPack] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [messageInfo, setMessageInfo] = React.useState(undefined);
+
+  React.useEffect(() => {
+    if (snackPack.length && !messageInfo) {
+      // Set a new snack when we add a snack
+      setMessageInfo({ ...snackPack[0] });
+      setSnackPack((prev) => prev.slice(1));
+      setOpen(true);
+    } else if (snackPack.length && messageInfo && open) {
+      // Close an old snack when a new one is added
+      setOpen(false);
+    }
+  }, [snackPack, messageInfo, open]);
 
   return (
     <div>
@@ -459,13 +634,38 @@ export const Customer = () => {
               />
               <button
                 className="mt-10 cursor-pointer rounded bg-red-500 px-4 py-2 font-bold text-white outline-none hover:bg-red-700"
-                onClick={test}
+                onClick={() => editGroup()}
               >
                 Edit group
               </button>
             </div>
           </Modal>
         )}
+        <Modal
+          title="File Uploaded"
+          isOpen={fileInfo !== null} // Pass whether the modal should be open based on whether fileInfo is available
+          setIsOpen={() => setFileInfo(null)} // Set fileInfo to null to close the modal
+        >
+          {/* Render the file information inside the modal */}
+          {fileInfo ? (
+            <div style={{ padding: '16px' }}>
+              <h2>File Information</h2>
+              <p>File Name: {fileInfo.fileName}</p>
+              <p>File Type: {fileInfo.fileMimetype}</p>
+              <p>Read Records: {fileInfo.readRecordsCount}</p>
+              <p>Saved Records: {fileInfo.savedRecordsCount}</p>
+              <p>Skipped Records: {fileInfo.skippedRecordsCount}</p>
+              {/* Add more file information fields as needed */}
+            </div>
+          ) : (
+            <div>
+              {/* Render the UI when fileInfo is null */}
+              <p>No file information available.</p>
+              {/* You can add additional content or components here */}
+            </div>
+          )}
+        </Modal>
+
         {/* Add Customer Group Button */}
         {/* <button
           className="rounded-full bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-800"
@@ -511,12 +711,12 @@ export const Customer = () => {
             Add Group
           </Button>
           {uploadResponse && (
-            <div className="mt-4 rounded-lg border border-gray-300 bg-gray-100 p-4">
-              <h3 className="mb-2 text-lg text-blue-500">Upload Response:</h3>
-              <pre className="overflow-auto rounded-lg border border-gray-200 bg-white p-3">
-                {JSON.stringify(uploadResponse, null, 2)}
-              </pre>
-            </div>
+            <SimpleSnackbar
+              open={openSnackbar}
+              setOpen={setOpenSnackbar}
+              message={snackbarMessage}
+              severity="success"
+            />
           )}
           {/* <GroupProfile /> */}
           <TableContainer component={Paper}>
@@ -536,7 +736,7 @@ export const Customer = () => {
                     />
                   </TableCell>
                   <TableCell>Group Name</TableCell>
-                  <TableCell>Creator</TableCell>
+                  <TableCell>Activation Status</TableCell>
                   <TableCell>Created Date</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
@@ -572,65 +772,139 @@ export const Customer = () => {
                         >
                           {row.groupName}
                         </TableCell>
-                        <TableCell>{row.totalCustomers}</TableCell>
+                        <TableCell>
+                          {/* Display activation status with icons */}
+                          {row.activationStatus === 'Active' ? (
+                            <CheckCircle style={{ color: 'green' }} />
+                          ) : (
+                            <Cancel style={{ color: 'red' }} />
+                          )}
+                          {/* {row.activationStatus} */}
+                        </TableCell>
                         <TableCell>{row.createdDate}</TableCell>
                         <TableCell>
-                          <div className="relative">
-                            <div className="bg-blue absolute right-0 top-0 mt-2 rounded p-2 shadow-lg ">
-                              {showActions === row.id && (
-                                <>
-                                  <MenuItem
-                                    onClick={() => handleEdit(row.id)}
-                                    sx={{
-                                      backgroundColor: 'gray',
-                                      '&:hover': { backgroundColor: 'blue' },
-                                    }}
-                                  >
-                                    Edit
-                                  </MenuItem>
-                                  <MenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation(); // Prevent row selection
-                                      deleteRow(row.id);
-                                    }}
-                                    sx={{
-                                      backgroundColor: 'gray',
-                                      '&:hover': { backgroundColor: 'red' },
-                                    }}
-                                  >
-                                    Delete
-                                  </MenuItem>
-                                  <MenuItem
-                                    onClick={() => handleactivate(row.id)}
-                                    sx={{
-                                      backgroundColor: 'gray',
-                                      '&:hover': { backgroundColor: 'green' },
-                                    }}
-                                  >
-                                    Activate user
-                                  </MenuItem>
-                                  <MenuItem
-                                    sx={{
-                                      backgroundColor: 'gray',
-                                      '&:hover': { backgroundColor: 'orange' },
-                                    }}
-                                  >
-                                    Deactivate user
-                                  </MenuItem>
-                                </>
-                              )}
+                          <TableCell>
+                            <div className="relative">
+                              <IconButton
+                                aria-label="actions"
+                                onClick={(event) => {
+                                  setAnchorEl(event.currentTarget); // Set anchorEl to the current target
+                                  setShowActions(row.id); // Set showActions to the row id
+                                }}
+                              >
+                                <MoreVertIcon />
+                              </IconButton>
+                              <Menu
+                                anchorEl={anchorEl}
+                                open={Boolean(
+                                  anchorEl && showActions === row.id,
+                                )} // Open menu only if anchorEl is not null and showActions matches row id
+                                onClose={() => {
+                                  setAnchorEl(null); // Reset anchorEl when closing the menu
+                                  setShowActions(null); // Reset showActions when closing the menu
+                                }}
+                                anchorOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                                transformOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                                PaperProps={{
+                                  sx: {
+                                    marginTop: '-8px',
+                                  },
+                                }}
+                              >
+                                {showActions === row.id && (
+                                  <div className="">
+                                    <MenuItem
+                                      onClick={() => handleEdit(row.id)}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      Edit
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent row selection
+                                        deleteRow(row.id);
+                                      }}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      Delete
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={(event) => {
+                                        groupActivate(row.id);
+                                        setShowMenu(null); // Close the menu when clicked
+                                      }}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      Activate Group
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={(event) => {
+                                        groupDeactivate(row.id);
+                                        setShowMenu(null); // Close the menu when clicked
+                                      }}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      Deactivate Group
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={() => {
+                                        handleGetFileInfo(row.id);
+                                        setShowMenu(null);
+                                      }}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      File Summary
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={() => getFileInfo(row)}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      Recipient List
+                                    </MenuItem>
+                                    <MenuItem
+                                      onClick={() => getSkippedRecords(row)}
+                                      sx={{
+                                        backgroundColor: 'white',
+                                        '&:hover': { backgroundColor: 'gray' },
+                                      }}
+                                    >
+                                      Skipped Records
+                                    </MenuItem>
+                                  </div>
+                                )}
+                              </Menu>
+                              <SimpleSnackbar
+                                open={openSnackbar}
+                                setOpen={setOpenSnackbar}
+                                message={snackbarMessage}
+                                severity="success"
+                              />
                             </div>
-                            <IconButton
-                              aria-label="actions"
-                              onClick={() =>
-                                setShowActions(
-                                  showActions === row.id ? null : row.id,
-                                )
-                              }
-                            >
-                              <MoreVertIcon />
-                            </IconButton>
-                          </div>
+                          </TableCell>
                         </TableCell>
                       </TableRow>
                     );

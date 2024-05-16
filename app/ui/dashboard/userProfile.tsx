@@ -10,6 +10,7 @@ export function UserProfile() {
     fetchUserDetails();
   }, []);
   const dev_url = environment.dev_url;
+  const local_user = environment.local_user;
 
   const fetchUserDetails = async () => {
     try {
@@ -17,7 +18,7 @@ export function UserProfile() {
       if (!accessToken) {
         throw new Error('Access token not found');
       }
-      const response = await fetch(`${dev_url}/api/v1/client-users`, {
+      const response = await fetch(`${local_user}/api/v1/client-users`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,

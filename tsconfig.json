@@ -40,7 +40,7 @@
     ".next/types/**/*.ts",
     "app/lib/placeholder-data.js",
     "scripts/seed.js"
-, "app/GroupContext.js", "app/lib/encryption.tsx", "app/dashboard/customers/page.js"  ],
+, "app/GroupContext.js", "app/lib/encryption.tsx", "app/dashboard/customers/page.js", "app/dashboard/RowIdContext.js"  ],
   "exclude": [
     "node_modules",
     "app/dashboard/customers/page.ts"

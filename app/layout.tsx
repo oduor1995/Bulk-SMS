@@ -7,6 +7,7 @@ import Head from 'next/head';
 //import { UserProvider } from '@auth0/nextjs-auth0/client';
 import { GroupProvider } from './GroupContext';
 import Script from 'next/script';
+import { RowIdProvider } from './rowIdContext';
 
 export default function RootLayout({
   children,
@@ -27,7 +28,7 @@ export default function RootLayout({
       />
       <body className={`${inter.className} antialiased`}>
         {' '}
-        <GroupProvider>{children}</GroupProvider>
+        <RowIdProvider>{children}</RowIdProvider>
       </body>
     </html>
   );

@@ -16,14 +16,15 @@ import Paper from '@mui/material/Paper';
 import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
-import RegistrationForm from '@/app/ui/dashboard/RegistrationForm';
+import { RegistrationForm } from '@/app/ui/dashboard/RegistrationForm';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import MenuItem from '@mui/material/MenuItem';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { setFlagsFromString } from 'v8';
 import { EditUserForm } from '@/app/ui/dashboard/EditUserForm';
-import { seteuid } from 'process';
+import { env, seteuid } from 'process';
 import { useEffect } from 'react';
+import { environment } from '@/environment/environment';
 
 function CustomTable() {
   const [clientId, setClientId] = useState(null);
@@ -34,6 +35,7 @@ function CustomTable() {
   const [editRowId, setEditRowId] = useState();
   const [selectedRowId, setSelectedRowId] = useState();
   const [errorMessage, setErrorMessage] = useState();
+  const [senderId, setSenderId] = useState();
   // Initialize formData state using useState hook
   const [formData, setFormData] = useState({
     Branch: '',
@@ -41,9 +43,10 @@ function CustomTable() {
     firstName: '',
     lastName: '',
     emailAddress: '',
-    senderIds: [4],
+    senderIds: [],
     roleCode: '',
   });
+  const dev_core_url = environment.dev_core_url;
 
   const [rows, setRows] = useState<any>([
     {
@@ -57,34 +60,67 @@ function CustomTable() {
     },
     // Initial row data
   ]);
-  useEffect(() => {
-    const decodeToken = () => {
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            const decoded: any = jwt.decode(token, { complete: true });
-            if (decoded) {
-              console.log('Decoded JWT:', decoded);
-              const clientId = decoded.payload.client_id;
-              console.log('Client ID:', clientId);
-              setClientId(clientId); // Set clientId state
-            }
-          } catch (error) {
-            console.error('Invalid token', error);
-          }
-        } else {
-          console.error('Token not found in local storage');
-        }
-      } else {
-        console.warn(
-          'Window object is not defined, unable to access localStorage',
-        );
-      }
-    };
+  // useEffect(() => {
+  //   const decodeToken = () => {
+  //     if (typeof window !== 'undefined') {
+  //       const token = localStorage.getItem('token');
+  //       if (token) {
+  //         try {
+  //           const decoded: any = jwt.decode(token, { complete: true });
+  //           if (decoded) {
+  //             console.log('Decoded JWT:', decoded);
+  //             const clientId = decoded.payload.client_id;
+  //             console.log('Client ID:', clientId);
+  //             setClientId(clientId); // Set clientId state
+  //           }
+  //         } catch (error) {
+  //           console.error('Invalid token', error);
+  //         }
+  //       } else {
+  //         console.error('Token not found in local storage');
+  //       }
+  //     } else {
+  //       console.warn(
+  //         'Window object is not defined, unable to access localStorage',
+  //       );
+  //     }
+  //   };
 
-    decodeToken(); // Call the decodeToken function
-  }, []);
+  //   decodeToken(); // Call the decodeToken function
+  // }, []);
+
+  // useEffect(() => {
+  //   const fetchSenderId = async () => {
+  //     const token = localStorage.getItem('accessToken'); // Retrieve the token
+  //     if (!token) {
+  //       console.error('No access token available.');
+  //       return;
+  //     }
+  //     const accessToken = localStorage.getItem('accessToken');
+  //     const dev_url = environment.dev_url;
+  //     try {
+  //       const response = await fetch(`${dev_url}}/api/v1/client-senderIDs`, {
+  //         method: 'GET',
+  //         headers: {
+  //           Authorization: `Bearer ${accessToken}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         throw new Error('Failed to fetch data');
+  //       }
+  //       const Data = await response.json();
+  //       setSenderId(Data.data.content.map((item: any) => item.senderID));
+  //     } catch (error) {
+  //       console.error('Failed to fetch senderId:', error);
+  //     }
+  //   };
+
+  //   fetchSenderId();
+  // }, []);
+  // useEffect(() => {
+  //   console.log('This are the sender Ids', senderId);
+  // }, [senderId]);
 
   const handleClick = () => {
     setShowForm(true);
@@ -110,20 +146,17 @@ function CustomTable() {
   const addNewRow = async (formData: any) => {
     setSelectedRowId(rows.id);
     const token = localStorage.getItem('accessToken');
-    console.log(token);
     const decoded: any = jwtDecode(token);
-    console.log('Decoded JWT:', decoded);
     const account = decoded.account;
-    console.log('Account:', account);
     const authToken = localStorage.getItem('accessToken');
     const decodeAccount = (account: any) => {
       const decodedAccount = atob(account); // Decode base64 string
       return decodedAccount; // Return decoded account string
     };
     const decodedAccount = decodeAccount(account);
-    console.log('Decoded Account:', decodedAccount);
     const clientId = decodedAccount;
     console.log('Client ID:', clientId);
+
     try {
       // Call the API to create a new user
       const response = await fetch(
@@ -213,9 +246,7 @@ function CustomTable() {
           </button>
         </div>
         {showForm && (
-          <RegistrationForm
-            onSubmit={(formData) => addNewRow(formData, rows.id)}
-          />
+          <RegistrationForm onSubmit={(formData) => addNewRow(formData)} />
         )}
         {showEditUserForm && (
           <EditUserForm onSubmit={handleEdit} id={editRowId} />

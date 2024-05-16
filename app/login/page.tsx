@@ -14,11 +14,13 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { authenticate } from '@/app/lib/actions';
 import Link from 'next/link';
 import { environment } from '@/environment/environment';
-
+import { useRouter } from 'next/navigation';
 const aestutils = new Aesutils();
 export default function LoginForm() {
+  const router = useRouter();
   const [errorMessage, setErrorMessage] = useState(null); //
   const dev_url = environment.dev_url;
+  const local_user = environment.local_user;
 
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent default form submission behavior
@@ -42,7 +44,7 @@ export default function LoginForm() {
 
       // Call the API to authenticate the user
       const response = await fetch(
-        `${dev_url}/api/v1/authenticate-client-user`,
+        `${local_user}/api/v1/authenticate-client-user`,
         {
           method: 'POST',
           headers: {
@@ -63,7 +65,7 @@ export default function LoginForm() {
 
         // Log the token to console
         console.log('Token:', token);
-        window.location.href = '/OTP';
+        router.push('/OTP');
       } else {
         // Authentication failed, handle the error
         const errorData = await response.json();

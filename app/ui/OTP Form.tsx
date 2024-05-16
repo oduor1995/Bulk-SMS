@@ -14,6 +14,7 @@ export default function OTPForm() {
       return;
     }
     const dev_url = environment.dev_url;
+    const local_user = environment.local_user;
 
     try {
       // Retrieve token from local storage
@@ -32,14 +33,17 @@ export default function OTPForm() {
       });
 
       // Send OTP and token to API for verification
-      const response = await fetch(`${dev_url}/api/v1/client-user/verifyOTP`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Token: `${token}`, // Include token in request headers
+      const response = await fetch(
+        `${local_user}/api/v1/client-user/verifyOTP`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Token: `${token}`, // Include token in request headers
+          },
+          body: JSON.stringify({ verificationCode: otp }), // Include only OTP in request body
         },
-        body: JSON.stringify({ verificationCode: otp }), // Include only OTP in request body
-      });
+      );
 
       // Check if the request was successful
       if (response.ok) {

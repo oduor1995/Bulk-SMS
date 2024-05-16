@@ -1,0 +1,5 @@
+export const environment= {
+    dev_core_url: "http://localhost:8083",
+    dev_url :'http://localhost:8082'
+    
+}

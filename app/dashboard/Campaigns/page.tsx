@@ -1,132 +1,191 @@
 'use client';
-import { useState, FormEvent, ChangeEvent } from 'react';
-import Head from 'next/head';
-import handler, { sendMessage } from '../../services/send-mesage';
+import React, { useState } from 'react';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TablePagination from '@mui/material/TablePagination';
+import TableRow from '@mui/material/TableRow';
+import Checkbox from '@mui/material/Checkbox';
+import Paper from '@mui/material/Paper';
+import IconButton from '@mui/material/IconButton';
+import MenuItem from '@mui/material/MenuItem';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
+function SmsCampaign() {
+  const [rows, setRows] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [showActions, setShowActions] = useState(null);
 
-const SmsCampaign: React.FC = () => {
-  const [recipient, setRecipient] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-
-  const handleFormSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!recipient || !message) {
-      alert('Please fill in all fields');
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelecteds = rows.map((n) => n.id);
+      setSelected(newSelecteds);
       return;
     }
-
-    try {
-      const formData = new FormData();
-      formData.append('recipient', recipient);
-      formData.append('message', message);
-
-      if (csvFile) {
-        formData.append('csvFile', csvFile);
-      }
-
-      const response = await sendMessage(formData);
-
-      console.log({ response });
-
-      if (response.ok) {
-        alert('SMS sent successfully!');
-        setRecipient('');
-        setMessage('');
-        setCsvFile(null); // Clear the file input
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to send SMS: ${errorData.error}`);
-      }
-    } catch (error) {
-      console.error('Error sending SMS:', error);
-      alert('An error occurred. Please try again later.');
-    }
+    setSelected([]);
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleClick = (event, id) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected = [];
 
-    if (files && files.length > 0) {
-      setCsvFile(files[0]);
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1),
+      );
     }
+
+    setSelected(newSelected);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const isSelected = (id) => selected.indexOf(id) !== -1;
+
+  const handleEdit = (id) => {
+    console.log('Edit', id);
+    // Implementation for edit here
+  };
+
+  const deleteRow = (id) => {
+    console.log('Delete', id);
+    // Implementation for delete here
+  };
+
+  const handleActivate = (id) => {
+    console.log('Activate Group', id);
+    // Implementation for activation here
   };
 
   return (
     <div>
-      <Head>
-        <title>SMS Campaign</title>
-      </Head>
+      <TableContainer component={Paper}>
+        <Table aria-label="dynamic table">
+          <TableHead>
+            <TableRow>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  indeterminate={
+                    selected.length > 0 && selected.length < rows.length
+                  }
+                  checked={rows.length > 0 && selected.length === rows.length}
+                  onChange={handleSelectAllClick}
+                  inputProps={{ 'aria-label': 'select all desserts' }}
+                />
+              </TableCell>
+              <TableCell>Campaign Name</TableCell>
+              <TableCell>Message</TableCell>
+              <TableCell>Sender ID</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((row, index) => {
+                const isItemSelected = isSelected(row.id);
+                const labelId = `enhanced-table-checkbox-${index}`;
 
-      <form
-        onSubmit={handleFormSubmit}
-        encType="multipart/form-data" // Required for file uploads
-        className="mx-auto mt-8 max-w-md rounded border p-4"
-      >
-        <h1 className="mb-4 text-2xl font-bold">Send SMS Campaign</h1>
-
-        <div className="mb-4">
-          <label
-            htmlFor="recipient"
-            className="block text-sm font-medium text-gray-600"
-          >
-            Recipient Number:
-          </label>
-          <input
-            type="tel"
-            id="recipient"
-            name="recipient"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder="Enter recipient number"
-            className="mt-1 w-full rounded border p-2 focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label
-            htmlFor="message"
-            className="block text-sm font-medium text-gray-600"
-          >
-            Message:
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Enter your SMS message"
-            rows={4}
-            className="mt-1 w-full rounded border p-2 focus:border-blue-500 focus:outline-none"
-          ></textarea>
-        </div>
-
-        <div className="mb-4">
-          <label
-            htmlFor="csvFile"
-            className="block text-sm font-medium text-gray-600"
-          >
-            Upload CSV File:
-          </label>
-          <input
-            type="file"
-            id="csvFile"
-            name="csvFile"
-            onChange={handleFileChange}
-            className="mt-1 w-full rounded border p-2 focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="focus:shadow-outline-blue rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none active:bg-blue-800"
-        >
-          Send SMS
-        </button>
-      </form>
+                return (
+                  <TableRow
+                    hover
+                    onClick={(event) => handleClick(event, row.id)}
+                    role="checkbox"
+                    aria-checked={isItemSelected}
+                    tabIndex={-1}
+                    key={row.id}
+                    selected={isItemSelected}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={isItemSelected}
+                        inputProps={{ 'aria-labelledby': labelId }}
+                      />
+                    </TableCell>
+                    <TableCell
+                      component="th"
+                      id={labelId}
+                      scope="row"
+                      padding="none"
+                    >
+                      {row.groupName}
+                    </TableCell>
+                    <TableCell>{row.totalCustomers}</TableCell>
+                    <TableCell>{row.createdDate}</TableCell>
+                    <TableCell>
+                      <div className="relative">
+                        <IconButton
+                          aria-label="actions"
+                          onClick={() =>
+                            setShowActions(
+                              showActions === row.id ? null : row.id,
+                            )
+                          }
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                        {showActions === row.id && (
+                          <div className="bg-blue absolute right-0 top-0 mt-2 rounded p-2 shadow-lg">
+                            <MenuItem
+                              onClick={() => handleEdit(row.id)}
+                              sx={{ '&:hover': { backgroundColor: 'blue' } }}
+                            >
+                              Edit
+                            </MenuItem>
+                            <MenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteRow(row.id);
+                              }}
+                              sx={{ '&:hover': { backgroundColor: 'red' } }}
+                            >
+                              Delete
+                            </MenuItem>
+                            <MenuItem
+                              onClick={() => handleActivate(row.id)}
+                              sx={{ '&:hover': { backgroundColor: 'green' } }}
+                            >
+                              Activate Group
+                            </MenuItem>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={rows.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
     </div>
   );
-};
+}
 
 export default SmsCampaign;
