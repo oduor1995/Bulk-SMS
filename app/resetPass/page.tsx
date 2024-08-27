@@ -19,13 +19,16 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ devUrl }) => {
     }
 
     try {
-      const response = await fetch(`${devUrl}/api/v3/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${devUrl}/api/v1/client-user/password/reset`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password }),
         },
-        body: JSON.stringify({ password }),
-      });
+      );
 
       if (response.ok) {
         setMessage('Password reset successfully.');

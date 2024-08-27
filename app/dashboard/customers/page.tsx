@@ -56,7 +56,8 @@ export const Customer = () => {
   const [error, setError] = useState(null); // State to hold any errors
   const [uploadResponse, setUploadResponse] = useState(null);
   const [activationSuccess, setActivationSuccess] = useState(false);
-  const { selectedRowId, setSelectedRow } = useRowId();
+  const { selectedRowId, setSelectedRow, selectedSenderId, setSender } =
+    useRowId();
   const [groupsData, setGroupsData] = useState(null);
   const [fileInfo, setFileInfo] = useState(null);
   const [showMenu, setShowMenu] = useState(null); // State to control the visibility of the menu
@@ -135,6 +136,7 @@ export const Customer = () => {
       console.log('These are the available groups:', availableGroupsData);
 
       setRows(formattedData);
+      setSender(availableGroupsData);
       setLoading(false);
     } catch (error) {
       setError(error);
@@ -261,6 +263,7 @@ export const Customer = () => {
     fetchData();
   };
   const groupActivate = async (groupId: any) => {
+    const authToken = localStorage.getItem('accessToken');
     try {
       const response = await fetch(
         `${local_core}/api/v1/activate/sms-campaign-group/${groupId}`,
@@ -365,6 +368,8 @@ export const Customer = () => {
 
   const getFileInfo = (row: any) => {
     setSelectedRow(row.id);
+    setSender(5);
+    console.log('This is the selected sender id', selectedSenderId);
     router.push('/dashboard/RecipientTable');
   };
 
@@ -855,6 +860,10 @@ export const Customer = () => {
                                     <MenuItem
                                       onClick={(event) => {
                                         groupDeactivate(row.id);
+                                        console.log(
+                                          'This is the row id',
+                                          row.id,
+                                        );
                                         setShowMenu(null); // Close the menu when clicked
                                       }}
                                       sx={{

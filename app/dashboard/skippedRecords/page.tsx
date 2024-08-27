@@ -1,10 +1,11 @@
 'use client';
 import { SkippedRecordsTable } from '@/app/ui/dashboard/skippedRecord';
 
-export function skippedRecords() {
+function skippedRecords() {
   return (
     <div>
       <SkippedRecordsTable />
     </div>
   );
 }
+export default skippedRecords;

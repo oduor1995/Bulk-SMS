@@ -82,7 +82,7 @@ export const TableComponent = () => {
         // Construct the URL with query parameters
         const groupId = selectedRowId; // Example groupId
         const page = 0; // Example page number
-        const size = 1000; // Example page size
+        const size = 10; // Example page size
         const url = `${local_core}/api/v1/sms-campaign-group/recipients?groupId=${groupId}&page=${page}&size=${size}`;
         console.log('Selected row id', selectedRowId);
 

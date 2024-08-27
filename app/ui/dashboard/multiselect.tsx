@@ -9,6 +9,7 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Checkbox from '@mui/material/Checkbox';
 import { useState, useEffect } from 'react';
 import { environment } from '@/environment/environment';
+import { useRowId } from '@/app/rowIdContext';
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -25,15 +26,18 @@ interface MultipleSelectCheckmarksProps {
   senderIds: string[];
   onSenderIdsChange: (newSenderIds: string[]) => void;
   options: string[];
+  setSender: any;
 }
 
 export default function MultipleSelectCheckmarks({
   // senderIds,
   onSenderIdsChange,
+
   // options,
 }: MultipleSelectCheckmarksProps) {
   const [sendersId, setSendersId] = useState([]);
   const [senders, setSenders] = useState([]);
+  const { setSender } = useRowId;
 
   const [selectedSendersLabel, setSelectedSendersLabel] = useState([]);
   useEffect(() => {
